@@ -25,11 +25,19 @@ module ActsAsTenant
             keys.push(nil) if options[:has_global_records]
 
             if options[:through]
-              query_criteria = {options[:through] => {fkey.to_sym => keys}}
-              query_criteria[polymorphic_type.to_sym] = ActsAsTenant.current_tenant.class.to_s if options[:polymorphic]
-              joins(options[:through]).where(query_criteria)
+              case [options[:through]].flatten.count
+              when 1
+                query_criteria = { options[:through] => { fkey.to_sym => keys } }
+                query_criteria[polymorphic_type.to_sym] = ActsAsTenant.current_tenant.class.to_s if options[:polymorphic]
+                joins(options[:through]).where(query_criteria)
+              when 2
+                query_criteria = { options[:through].last => {fkey.to_sym => keys} }
+                joins(options[:through].first => options[:through].last).where(query_criteria)
+              else
+                raise ActsAsTenant::Errors::InvalidThroughAssociation, "Can only go 2 levels deep through associations"
+              end
             else
-              query_criteria = {fkey.to_sym => keys}
+              query_criteria = { fkey.to_sym => keys }
               query_criteria[polymorphic_type.to_sym] = ActsAsTenant.current_tenant.class.to_s if options[:polymorphic]
               where(query_criteria)
             end
@@ -47,6 +55,17 @@ module ActsAsTenant
             if options[:polymorphic]
               m.send("#{fkey}=".to_sym, ActsAsTenant.current_tenant.class.to_s) if m.send(fkey.to_s).nil?
               m.send("#{polymorphic_type}=".to_sym, ActsAsTenant.current_tenant.class.to_s) if m.send(polymorphic_type.to_s).nil?
+            elsif options[:through] 
+              case [options[:through]].flatten.count
+              when 1
+                model = m.send options[:through]
+                model.send(fkey.to_s) if model.send(fkey.to_s).present?
+              when 2
+                model = m.send options[:through].first
+                model.send(fkey.to_s) if model.send(fkey.to_s).present?
+              else
+                raise ActsAsTenant::Errors::InvalidThroughAssociation
+              end
             else
               m.send "#{fkey}=".to_sym, ActsAsTenant.current_tenant.send(pkey)
             end

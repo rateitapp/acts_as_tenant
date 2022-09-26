@@ -11,5 +11,8 @@ module ActsAsTenant
 
     class TenantIsImmutable < ActsAsTenant::Error
     end
+
+    class InvalidThroughAssociation < ActsAsTenant::Error
+    end
   end
 end
