@@ -29,8 +29,8 @@ module ActsAsTenant
               query_criteria[polymorphic_type.to_sym] = ActsAsTenant.current_tenant.class.to_s if options[:polymorphic]
               joins(options[:through]).where(query_criteria)
             elsif options[:deep_through]
-              query_criteria = {options[:deep_through][:through_2] => {fkey.to_sym => keys}}
-              joins(options[:deep_through][:through_1] => options[:deep_through][:through_2]).where(query_criteria)
+              query_criteria = {options[:deep_through].last => {fkey.to_sym => keys}}
+              joins(options[:deep_through].first => options[:deep_through].last).where(query_criteria)
             else
               query_criteria = {fkey.to_sym => keys}
               query_criteria[polymorphic_type.to_sym] = ActsAsTenant.current_tenant.class.to_s if options[:polymorphic]
@@ -54,7 +54,7 @@ module ActsAsTenant
               model = m.send options[:through]
               model.send(fkey.to_s) if model.send(fkey.to_s).present?
             elsif options[:deep_through] 
-              model = m.send options[:deep_through][:through_1]
+              model = m.send options[:deep_through].first
               model.send(fkey.to_s) if model.send(fkey.to_s).present?
             else
               m.send "#{fkey}=".to_sym, ActsAsTenant.current_tenant.send(pkey)
